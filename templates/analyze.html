@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Analyze — MindCare AI{% endblock %}
+
+{% block head %}
+<style>
+.analyze-page { max-width: 860px; margin: 0 auto; padding: 60px 20px 80px; }
+
+.page-header { text-align: center; margin-bottom: 48px; }
+.page-header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; }
+.page-header p  { color: var(--text-muted); font-size: .95rem; }
+
+/* Tab pills */
+.tab-pills {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.tab-pill {
+  padding: 10px 22px;
+  border-radius: 30px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: 'Inter', sans-serif;
+}
+.tab-pill:hover { border-color: var(--g1); color: var(--g1); }
+.tab-pill.active {
+  background: var(--grad);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(108,99,255,.35);
+}
+
+/* Form card */
+.form-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px;
+  animation: scaleIn .4s var(--transition) both;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.form-label {
+  display: block;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.form-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: .92rem;
+  color: var(--text);
+  background: rgba(255,255,255,.8);
+  resize: vertical;
+  transition: border-color .25s, box-shadow .25s;
+  outline: none;
+}
+.form-textarea:focus {
+  border-color: var(--g1);
+  box-shadow: 0 0 0 4px rgba(108,99,255,.1);
+}
+
+.file-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: rgba(255,255,255,.5);
+  position: relative;
+}
+.file-drop:hover, .file-drop.drag-over {
+  border-color: var(--g1);
+  background: rgba(108,99,255,.04);
+}
+.file-drop input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.file-drop-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.file-drop p { color: var(--text-muted); font-size: .88rem; }
+.file-drop strong { color: var(--g1); }
+.file-name { margin-top: 10px; font-size: .82rem; color: var(--g1); font-weight: 600; display: none; }
+
+.form-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 24px 0;
+  color: var(--text-muted); font-size: .82rem;
+}
+.form-divider::before, .form-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.submit-row { margin-top: 28px; display: flex; gap: 12px; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analyze-page">
+
+  <div class="page-header anim-up">
+    <h1><span class="grad-text">Analyze Mental Health</span></h1>
+    <p>Choose an analysis mode and provide your input below</p>
+  </div>
+
+  <!-- Tab pills -->
+  <div class="tab-pills anim-up-2">
+    <button class="tab-pill active" onclick="switchTab('both', this)">🔀 Both</button>
+    <button class="tab-pill" onclick="switchTab('text', this)">📝 Text Only</button>
+    <button class="tab-pill" onclick="switchTab('image', this)">📷 Image Only</button>
+  </div>
+
+  <!-- Forms -->
+  <div class="form-card anim-up-3">
+
+    <!-- BOTH -->
+    <div class="tab-pane active" id="tab-both">
+      <form action="/predict" method="POST" enctype="multipart/form-data">
+        <label class="form-label">How are you feeling? Describe your thoughts…</label>
+        <textarea name="text" class="form-textarea" placeholder="I've been feeling overwhelmed lately..."></textarea>
+
+        <div class="form-divider">and / or upload an image</div>
+
+        <label class="form-label">Upload a facial photo</label>
+        <div class="file-drop" id="drop-both">
+          <input type="file" name="image" accept="image/*" onchange="showFileName(this,'drop-both')">
+          <div class="file-drop-icon">📁</div>
+          <p>Drag & drop or <strong>click to browse</strong></p>
+          <p>JPG, PNG supported</p>
+          <div class="file-name" id="fn-both"></div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn-grad">🔍 Analyze Now</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- TEXT ONLY -->
+    <div class="tab-pane" id="tab-text">
+      <form action="/predict" method="POST">
+        <label class="form-label">Describe your current emotional state</label>
+        <textarea name="text" class="form-textarea" rows="6" placeholder="Share your thoughts and feelings..."></textarea>
+        <div class="submit-row">
+          <button type="submit" class="btn-grad">📝 Analyze Text</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- IMAGE ONLY -->
+    <div class="tab-pane" id="tab-image">
+      <form action="/predict" method="POST" enctype="multipart/form-data">
+        <label class="form-label">Upload a facial photo for emotion detection</label>
+        <div class="file-drop" id="drop-img">
+          <input type="file" name="image" accept="image/*" onchange="showFileName(this,'drop-img')">
+          <div class="file-drop-icon">🖼️</div>
+          <p>Drag & drop or <strong>click to browse</strong></p>
+          <p>JPG, PNG supported</p>
+          <div class="file-name" id="fn-img"></div>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn-grad">📷 Analyze Image</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+function showFileName(input, dropId) {
+  const drop = document.getElementById(dropId);
+  const fn   = drop.querySelector('.file-name');
+  if (input.files[0]) {
+    fn.textContent = '✅ ' + input.files[0].name;
+    fn.style.display = 'block';
+    drop.style.borderColor = 'var(--g1)';
+  }
+}
+// drag-over highlight
+document.querySelectorAll('.file-drop').forEach(d => {
+  d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('drag-over'); });
+  d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
+  d.addEventListener('drop', () => d.classList.remove('drag-over'));
+});
+</script>
+{% endblock %}

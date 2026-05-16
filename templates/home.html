@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}MindCare AI — Home{% endblock %}
+
+{% block head %}
+<style>
+/* ── HERO ── */
+.hero {
+  min-height: 88vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background: var(--grad-hero);
+  z-index: 0;
+}
+/* animated orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: .45;
+  animation: orbFloat 10s ease-in-out infinite alternate;
+}
+.orb1 { width:500px;height:500px; background:var(--g1); top:-150px;left:-100px; animation-delay:0s; }
+.orb2 { width:400px;height:400px; background:var(--g2); bottom:-100px;right:-80px; animation-delay:-5s; }
+.orb3 { width:300px;height:300px; background:var(--g4); top:40%;left:60%; animation-delay:-3s; }
+@keyframes orbFloat {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(40px,30px) scale(1.1); }
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 760px; }
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  color: rgba(255,255,255,.9);
+  padding: 7px 18px;
+  border-radius: 30px;
+  font-size: .82rem;
+  font-weight: 500;
+  margin-bottom: 28px;
+  backdrop-filter: blur(8px);
+  animation: fadeInUp .5s ease both;
+}
+.hero-badge span { width:8px;height:8px;background:#4ade80;border-radius:50%;animation:statusBlink 2s infinite; }
+@keyframes statusBlink { 0%,100%{opacity:1}50%{opacity:.3} }
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.15;
+  margin-bottom: 20px;
+  animation: fadeInUp .6s .1s ease both;
+}
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(90deg, #a78bfa, #48c6ef);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,.75);
+  max-width: 560px;
+  margin: 0 auto 36px;
+  line-height: 1.7;
+  animation: fadeInUp .6s .2s ease both;
+}
+
+.hero-btns {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeInUp .6s .3s ease both;
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 28px; left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,.5);
+  font-size: .78rem;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  animation: fadeIn 1s .8s ease both;
+  z-index: 1;
+}
+.hero-scroll::after {
+  content: '';
+  width: 1px; height: 40px;
+  background: linear-gradient(to bottom, rgba(255,255,255,.4), transparent);
+  animation: scrollLine 1.5s ease-in-out infinite;
+}
+@keyframes scrollLine { 0%,100%{opacity:.4;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(1.2)} }
+
+/* ── STATS ── */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+  max-width: 900px;
+  margin: -36px auto 0;
+  position: relative;
+  z-index: 2;
+  padding: 0 20px;
+}
+.stat-card {
+  flex: 1;
+  min-width: 160px;
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-card:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.stat-card:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+.stat-card:not(:last-child) { border-right: 1px solid var(--border); }
+.stat-num {
+  font-size: 2rem;
+  font-weight: 800;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { font-size: .8rem; color: var(--text-muted); margin-top: 4px; }
+
+/* ── FEATURES ── */
+.features-section {
+  padding: 100px 20px 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+.feat-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  box-shadow: var(--shadow);
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.feat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--grad);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition);
+}
+.feat-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-lg); }
+.feat-card:hover::before { transform: scaleX(1); }
+
+.feat-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: var(--grad-soft);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  margin-bottom: 20px;
+}
+.feat-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+.feat-card p  { font-size: .88rem; color: var(--text-muted); line-height: 1.6; }
+.feat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--g1);
+  text-decoration: none;
+  transition: gap var(--transition);
+}
+.feat-link:hover { gap: 10px; }
+
+/* ── HOW IT WORKS ── */
+.how-section {
+  padding: 80px 20px;
+  background: linear-gradient(135deg, rgba(108,99,255,.05), rgba(72,198,239,.05));
+}
+.how-inner { max-width: 900px; margin: 0 auto; }
+.steps { display: flex; gap: 0; flex-wrap: wrap; justify-content: center; margin-top: 48px; }
+.step {
+  flex: 1; min-width: 180px;
+  text-align: center;
+  padding: 0 20px;
+  position: relative;
+}
+.step:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -10px; top: 28px;
+  font-size: 1.4rem;
+  color: var(--g3);
+}
+.step-num {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 16px rgba(108,99,255,.35);
+}
+.step h4 { font-size: .95rem; font-weight: 700; margin-bottom: 8px; }
+.step p  { font-size: .82rem; color: var(--text-muted); }
+
+/* ── CTA BANNER ── */
+.cta-banner {
+  margin: 0 20px 80px;
+  max-width: 1160px;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--grad-hero);
+  border-radius: var(--radius);
+  padding: 60px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(108,99,255,.4), transparent 60%),
+              radial-gradient(ellipse at 70% 50%, rgba(72,198,239,.3), transparent 60%);
+}
+.cta-banner h2 { color:#fff; font-size:2rem; font-weight:800; position:relative; z-index:1; }
+.cta-banner p  { color:rgba(255,255,255,.75); margin:12px 0 28px; position:relative; z-index:1; }
+.cta-banner .btn-grad { position:relative; z-index:1; font-size:1rem; padding:14px 36px; }
+
+@media(max-width:600px){
+  .stats-row { flex-direction:column; margin-top:20px; }
+  .stat-card { border-radius: var(--radius-sm) !important; border-right: none !important; border-bottom: 1px solid var(--border); }
+  .step:not(:last-child)::after { display:none; }
+  .steps { gap: 24px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge"><span></span> AI-Powered Mental Health Platform</div>
+    <h1>Understand Your Mind<br>with <em>Intelligent AI</em></h1>
+    <p>Analyze emotions through text, facial expressions, live video, and WhatsApp conversations — all in one place.</p>
+    <div class="hero-btns">
+      <a href="/analyze" class="btn-grad">🔍 Start Analysis</a>
+      <a href="/chatbot" class="btn-outline-grad" style="color:#fff;border-color:rgba(255,255,255,.4);">🤖 Talk to AI</a>
+    </div>
+  </div>
+  <div class="hero-scroll">Scroll</div>
+</section>
+
+<!-- STATS -->
+<div class="stats-row anim-up">
+  <div class="stat-card"><div class="stat-num">7+</div><div class="stat-label">Emotions Detected</div></div>
+  <div class="stat-card"><div class="stat-num">95%</div><div class="stat-label">Model Accuracy</div></div>
+  <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Analysis Modes</div></div>
+  <div class="stat-card"><div class="stat-num">Real-time</div><div class="stat-label">Live Detection</div></div>
+</div>
+
+<!-- FEATURES -->
+<section class="features-section">
+  <h2 class="section-title anim-up"><span class="grad-text">Core Features</span></h2>
+  <p class="section-sub anim-up-2">Multiple AI-powered tools to understand mental wellness</p>
+  <div class="features-grid">
+    <div class="feat-card anim-up">
+      <div class="feat-icon">📝</div>
+      <h3>Text Sentiment Analysis</h3>
+      <p>Detect depression, anxiety, and stress signals from written text using NLP and machine learning.</p>
+      <a href="/analyze" class="feat-link">Try it →</a>
+    </div>
+    <div class="feat-card anim-up-2">
+      <div class="feat-icon">📷</div>
+      <h3>Facial Emotion Recognition</h3>
+      <p>Identify 7 core emotions from uploaded images using deep learning CNN models.</p>
+      <a href="/analyze" class="feat-link">Try it →</a>
+    </div>
+    <div class="feat-card anim-up-3">
+      <div class="feat-icon">💬</div>
+      <h3>WhatsApp Chat Analysis</h3>
+      <p>Upload exported WhatsApp chats to analyze mental stability patterns over time.</p>
+      <a href="/whatsapp" class="feat-link">Try it →</a>
+    </div>
+    <div class="feat-card anim-up-4">
+      <div class="feat-icon">🎥</div>
+      <h3>Live Webcam Detection</h3>
+      <p>Real-time facial emotion recognition through your webcam for continuous monitoring.</p>
+      <a href="/webcam" class="feat-link">Try it →</a>
+    </div>
+    <div class="feat-card anim-up">
+      <div class="feat-icon">🤖</div>
+      <h3>AI Voice Chatbot</h3>
+      <p>Talk or type to our empathetic AI assistant powered by Ollama with voice support.</p>
+      <a href="/chatbot" class="feat-link">Try it →</a>
+    </div>
+    <div class="feat-card anim-up-2">
+      <div class="feat-icon">📊</div>
+      <h3>Confidence Scoring</h3>
+      <p>Every prediction comes with an accuracy confidence score and actionable recommendations.</p>
+      <a href="/analyze" class="feat-link">Try it →</a>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section">
+  <div class="how-inner">
+    <h2 class="section-title anim-up"><span class="grad-text">How It Works</span></h2>
+    <p class="section-sub anim-up-2">Three simple steps to mental health insights</p>
+    <div class="steps">
+      <div class="step anim-up">
+        <div class="step-num">1</div>
+        <h4>Input Your Data</h4>
+        <p>Upload text, image, WhatsApp chat, or use your webcam</p>
+      </div>
+      <div class="step anim-up-2">
+        <div class="step-num">2</div>
+        <h4>AI Analysis</h4>
+        <p>Our models process and detect emotional patterns</p>
+      </div>
+      <div class="step anim-up-3">
+        <div class="step-num">3</div>
+        <h4>Get Insights</h4>
+        <p>Receive detailed results with recommendations</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-banner anim-scale">
+  <h2>Ready to understand your mental wellness?</h2>
+  <p>Start with a free analysis — no account needed.</p>
+  <a href="/analyze" class="btn-grad">Get Started Free →</a>
+</div>
+
+{% endblock %}

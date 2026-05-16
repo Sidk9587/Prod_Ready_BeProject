@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.vscode/
+
+# Large model files (optional)
+*.h5
+*.pkl

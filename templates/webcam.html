@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Live Detection — MindCare AI{% endblock %}
+
+{% block head %}
+<style>
+.webcam-page { max-width: 860px; margin: 0 auto; padding: 60px 20px 80px; }
+.page-header { text-align: center; margin-bottom: 40px; }
+.page-header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; }
+
+.webcam-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: scaleIn .5s var(--transition) both;
+}
+.webcam-header {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(239,68,68,.1);
+  color: #dc2626;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.live-badge span {
+  width: 7px; height: 7px;
+  background: #dc2626;
+  border-radius: 50%;
+  animation: statusBlink 1s infinite;
+}
+@keyframes statusBlink { 0%,100%{opacity:1}50%{opacity:.2} }
+
+.webcam-body { padding: 28px; text-align: center; }
+.webcam-body img {
+  width: 100%;
+  max-width: 680px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
+}
+.webcam-footer {
+  padding: 20px 28px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.info-note {
+  background: rgba(108,99,255,.06);
+  border: 1px solid rgba(108,99,255,.15);
+  border-radius: var(--radius-sm);
+  padding: 14px 20px;
+  font-size: .85rem;
+  color: var(--text-muted);
+  margin-top: 20px;
+  text-align: left;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="webcam-page">
+
+  <div class="page-header anim-up">
+    <h1><span class="grad-text">Live Emotion Detection</span></h1>
+    <p>Real-time facial emotion recognition via your webcam</p>
+  </div>
+
+  <div class="webcam-card anim-up-2">
+    <div class="webcam-header">
+      <div class="live-badge"><span></span> Live</div>
+      <span style="font-size:.9rem;color:var(--text-muted);">Webcam stream — emotions detected in real-time</span>
+    </div>
+    <div class="webcam-body">
+      <img src="{{ url_for('video') }}" alt="Live webcam feed">
+      <div class="info-note">
+        💡 The model detects: <strong>Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral</strong>. 
+        Ensure good lighting and face the camera directly for best results.
+      </div>
+    </div>
+    <div class="webcam-footer">
+      <a href="/analyze" class="btn-outline-grad">← Back to Analyze</a>
+      <a href="/chatbot" class="btn-grad">🤖 Talk to AI</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

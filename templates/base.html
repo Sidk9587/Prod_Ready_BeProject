@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MindCare AI{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/">
+      <div class="brand-icon">🧠</div>
+      MindCare AI
+    </a>
+
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">🏠 Home</a></li>
+      <li><a href="/analyze" class="{% if request.path == '/analyze' %}active{% endif %}">🔍 Analyze</a></li>
+      <li><a href="/whatsapp" class="{% if request.path == '/whatsapp' %}active{% endif %}">💬 WhatsApp</a></li>
+      <li><a href="/webcam" class="{% if request.path == '/webcam' %}active{% endif %}">📷 Live</a></li>
+      <li><a href="/about" class="{% if request.path == '/about' %}active{% endif %}">ℹ️ About</a></li>
+      <li><a href="/chatbot" class="nav-cta {% if request.path == '/chatbot' %}active{% endif %}">🤖 AI Chat</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── PAGE CONTENT ── -->
+<div class="page-wrap">
+  {% block content %}{% endblock %}
+</div>
+
+<!-- ── FOOTER ── -->
+<footer class="site-footer">
+  © 2026 <strong>MindCare AI</strong> — Mental Health Detection System &nbsp;|&nbsp; AI Based Project
+</footer>
+
+<script>
+function toggleNav() {
+  document.getElementById('nav-links').classList.toggle('open');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

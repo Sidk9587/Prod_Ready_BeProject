@@ -1,0 +1,2 @@
+/* All chatbot styles are scoped inside templates/chatbot.html <style> block */
+*, *::before, *::after { box-sizing: border-box; }

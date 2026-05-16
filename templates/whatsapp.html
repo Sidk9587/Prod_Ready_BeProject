@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}WhatsApp Analysis — MindCare AI{% endblock %}
+
+{% block head %}
+<style>
+.wa-page { max-width: 860px; margin: 0 auto; padding: 60px 20px 80px; }
+.page-header { text-align: center; margin-bottom: 48px; }
+.page-header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; }
+
+.upload-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px;
+  animation: scaleIn .5s var(--transition) both;
+}
+
+.how-export {
+  background: rgba(108,99,255,.05);
+  border: 1px solid rgba(108,99,255,.15);
+  border-radius: var(--radius-sm);
+  padding: 20px 24px;
+  margin-bottom: 32px;
+}
+.how-export h4 { font-size: .9rem; font-weight: 700; margin-bottom: 12px; color: var(--g1); }
+.how-export ol { padding-left: 20px; }
+.how-export li { font-size: .85rem; color: var(--text-muted); margin-bottom: 6px; line-height: 1.5; }
+
+.file-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 48px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: rgba(255,255,255,.5);
+  position: relative;
+  margin-bottom: 24px;
+}
+.file-drop:hover, .file-drop.drag-over {
+  border-color: var(--g1);
+  background: rgba(108,99,255,.04);
+}
+.file-drop input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.file-drop-icon { font-size: 3rem; margin-bottom: 12px; }
+.file-drop h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.file-drop p { color: var(--text-muted); font-size: .85rem; }
+.file-drop strong { color: var(--g1); }
+.file-name-show { margin-top: 12px; font-size: .85rem; color: var(--g1); font-weight: 600; display: none; }
+
+.person-input {
+  margin-bottom: 24px;
+}
+.form-label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 8px; }
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: .92rem;
+  color: var(--text);
+  background: rgba(255,255,255,.8);
+  outline: none;
+  transition: border-color .25s, box-shadow .25s;
+}
+.form-input:focus {
+  border-color: var(--g1);
+  box-shadow: 0 0 0 4px rgba(108,99,255,.1);
+}
+.form-hint { font-size: .78rem; color: var(--text-muted); margin-top: 6px; }
+
+/* ── RESULTS ── */
+.wa-results { margin-top: 40px; animation: fadeInUp .6s var(--transition) both; }
+
+.wa-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.ov-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  text-align: center;
+}
+.ov-num {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.ov-label { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
+
+.person-result {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  margin-bottom: 20px;
+}
+.person-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.person-avatar {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.person-name { font-size: 1rem; font-weight: 700; }
+.person-msgs { font-size: .78rem; color: var(--text-muted); }
+
+.emotion-bars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.emo-row { display: flex; align-items: center; gap: 12px; }
+.emo-label { width: 90px; font-size: .8rem; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+.emo-bar-wrap { flex: 1; background: #f3f4f6; border-radius: 30px; height: 8px; overflow: hidden; }
+.emo-bar { height: 100%; border-radius: 30px; width: 0; transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+.emo-pct { width: 36px; font-size: .78rem; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+
+.stability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.stability-badge.stable   { background: rgba(74,222,128,.15); color: #16a34a; }
+.stability-badge.moderate { background: rgba(251,191,36,.15); color: #92400e; }
+.stability-badge.unstable { background: rgba(248,113,113,.15); color: #dc2626; }
+
+.person-summary { font-size: .88rem; color: var(--text-muted); line-height: 1.7; }
+
+.disclaimer {
+  background: rgba(251,191,36,.1);
+  border: 1px solid rgba(251,191,36,.3);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  font-size: .82rem;
+  color: #92400e;
+  margin-top: 24px;
+}
+
+.loading-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15,12,41,.7);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+.loading-overlay.show { display: flex; }
+.spinner {
+  width: 56px; height: 56px;
+  border: 4px solid rgba(255,255,255,.2);
+  border-top-color: var(--g2);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay p { color: #fff; font-size: .95rem; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page">
+
+  <div class="page-header anim-up">
+    <h1><span class="grad-text">WhatsApp Chat Analysis</span></h1>
+    <p>Upload an exported WhatsApp chat to analyze mental stability patterns</p>
+  </div>
+
+  <div class="upload-card anim-up-2">
+
+    <!-- How to export -->
+    <div class="how-export">
+      <h4>📱 How to export your WhatsApp chat:</h4>
+      <ol>
+        <li>Open WhatsApp → Open the chat you want to analyze</li>
+        <li>Tap the 3-dot menu (⋮) → <strong>More</strong> → <strong>Export chat</strong></li>
+        <li>Choose <strong>Without Media</strong></li>
+        <li>Save the <strong>.zip</strong> file and upload it below</li>
+      </ol>
+    </div>
+
+    <form id="wa-form" enctype="multipart/form-data">
+
+      <!-- File drop -->
+      <div class="file-drop" id="wa-drop">
+        <input type="file" name="chat_zip" id="wa-file" accept=".zip,.txt" onchange="showWAFile(this)">
+        <div class="file-drop-icon">💬</div>
+        <h3>Drop your WhatsApp export here</h3>
+        <p>Supports <strong>.zip</strong> (WhatsApp export) or <strong>.txt</strong> chat file</p>
+        <div class="file-name-show" id="wa-fn"></div>
+      </div>
+
+      <!-- Person name -->
+      <div class="person-input">
+        <label class="form-label">Person to analyze (optional)</label>
+        <input type="text" name="target_person" class="form-input"
+               placeholder="e.g. John — leave blank to analyze all participants">
+        <div class="form-hint">Enter the exact name as it appears in the chat to focus analysis on one person.</div>
+      </div>
+
+      <button type="submit" class="btn-grad" id="wa-submit">💬 Analyze Chat</button>
+    </form>
+
+  </div>
+
+  <!-- Results injected here -->
+  <div id="wa-results"></div>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p>Analyzing chat patterns…</p>
+</div>
+
+<script>
+function showWAFile(input) {
+  const fn = document.getElementById('wa-fn');
+  if (input.files[0]) {
+    fn.textContent = '✅ ' + input.files[0].name;
+    fn.style.display = 'block';
+    document.getElementById('wa-drop').style.borderColor = 'var(--g1)';
+  }
+}
+
+const emoColors = {
+  'Happy':    'linear-gradient(90deg,#4ade80,#22d3ee)',
+  'Sad':      'linear-gradient(90deg,#60a5fa,#818cf8)',
+  'Angry':    'linear-gradient(90deg,#f87171,#fb923c)',
+  'Fear':     'linear-gradient(90deg,#a78bfa,#818cf8)',
+  'Disgust':  'linear-gradient(90deg,#fb923c,#fbbf24)',
+  'Surprise': 'linear-gradient(90deg,#34d399,#6ee7b7)',
+  'Neutral':  'linear-gradient(90deg,#9ca3af,#d1d5db)',
+  'Healthy':  'linear-gradient(90deg,#4ade80,#22d3ee)',
+  'Depressed':'linear-gradient(90deg,#f87171,#fb923c)',
+};
+
+document.getElementById('wa-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const file = document.getElementById('wa-file').files[0];
+  if (!file) { alert('Please select a file first.'); return; }
+
+  document.getElementById('loading').classList.add('show');
+
+  const fd = new FormData(this);
+  try {
+    const resp = await fetch('/analyze_whatsapp', { method: 'POST', body: fd });
+    const data = await resp.json();
+    document.getElementById('loading').classList.remove('show');
+
+    if (data.error) {
+      document.getElementById('wa-results').innerHTML =
+        `<div class="disclaimer" style="margin-top:24px;">❌ ${data.error}</div>`;
+      return;
+    }
+    renderResults(data);
+  } catch(err) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('wa-results').innerHTML =
+      `<div class="disclaimer" style="margin-top:24px;">❌ Server error. Please try again.</div>`;
+  }
+});
+
+function renderResults(data) {
+  let html = `<div class="wa-results">
+    <h2 class="section-title" style="margin-bottom:8px;"><span class="grad-text">Analysis Results</span></h2>
+    <p class="section-sub" style="margin-bottom:28px;">Based on ${data.total_messages} messages from ${data.participants} participants</p>
+
+    <div class="wa-overview">
+      <div class="ov-card"><div class="ov-num">${data.total_messages}</div><div class="ov-label">Total Messages</div></div>
+      <div class="ov-card"><div class="ov-num">${data.participants}</div><div class="ov-label">Participants</div></div>
+      <div class="ov-card"><div class="ov-num">${data.date_range}</div><div class="ov-label">Date Range</div></div>
+      <div class="ov-card"><div class="ov-num">${data.overall_stability}</div><div class="ov-label">Overall Stability</div></div>
+    </div>`;
+
+  data.persons.forEach((p, i) => {
+    const stCls = p.stability === 'Stable' ? 'stable' : p.stability === 'Moderate' ? 'moderate' : 'unstable';
+    const stIcon = p.stability === 'Stable' ? '✅' : p.stability === 'Moderate' ? '⚠️' : '🔴';
+    const initials = p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+    let barsHtml = '';
+    Object.entries(p.emotions).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([emo, pct]) => {
+      const color = emoColors[emo] || 'var(--grad)';
+      barsHtml += `
+        <div class="emo-row">
+          <span class="emo-label">${emo}</span>
+          <div class="emo-bar-wrap"><div class="emo-bar" data-w="${pct}" style="background:${color}"></div></div>
+          <span class="emo-pct">${pct}%</span>
+        </div>`;
+    });
+
+    html += `
+      <div class="person-result" style="animation-delay:${i*0.1}s">
+        <div class="person-header">
+          <div class="person-avatar">${initials}</div>
+          <div>
+            <div class="person-name">${p.name}</div>
+            <div class="person-msgs">${p.message_count} messages analyzed</div>
+          </div>
+          <div class="stability-badge ${stCls}" style="margin-left:auto">${stIcon} ${p.stability}</div>
+        </div>
+        <div class="emotion-bars">${barsHtml}</div>
+        <p class="person-summary">${p.summary}</p>
+      </div>`;
+  });
+
+  html += `<div class="disclaimer">⚠️ This analysis is AI-based and for awareness purposes only. It is not a medical diagnosis.</div></div>`;
+  document.getElementById('wa-results').innerHTML = html;
+
+  // animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.emo-bar').forEach(b => {
+      b.style.width = b.dataset.w + '%';
+    });
+  }, 200);
+}
+
+// drag highlight
+const drop = document.getElementById('wa-drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+drop.addEventListener('drop', () => drop.classList.remove('drag-over'));
+</script>
+{% endblock %}
