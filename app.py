@@ -5,12 +5,24 @@ import cv2
 import os
 import re
 import nltk
+import logging
+import time
 from tensorflow.keras.models import load_model
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import requests
 from flask import Flask, render_template, request, jsonify
 
+
+# ── Logging setup ──────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S"
+)
+log = logging.getLogger("mindcare")
+log.info("=== MindCare AI starting up ===")
+# ────────────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
@@ -19,21 +31,30 @@ app.config["UPLOAD_FOLDER"] = "static/uploads"
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 # ---------------- LOAD MODELS ----------------
+log.info("Loading text model (text_model.pkl)...")
 text_model = pickle.load(open("models/text_model.pkl", "rb"))
+log.info("Loading TF-IDF vectorizer (tfidf.pkl)...")
 vectorizer = pickle.load(open("models/tfidf.pkl", "rb"))
+log.info("Loading image emotion model (emotion_7class_model.h5)...")
 image_model = load_model("models/emotion_7class_model.h5")
+log.info("All models loaded successfully.")
 
-# Emotion Labels for Image Model (EDIT if needed)
+# Emotion Labels — must match training order in retrain_image_model.py
+# Training order: angry(0), disgust(1), fear(2), happy(3), sad(4), surprise(5), neutral(6)
 emotion_labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
 
-# Text Labels (EDIT according to your dataset)
-text_labels = ["Healthy", "Depressed"]
+# Text Labels — actual classes from Combined_Data.csv (status column)
+# The model predicts these directly, no manual index mapping needed
+text_labels = ["Anxiety", "Bipolar", "Depression", "Normal", "Personality disorder", "Stress", "Suicidal"]
+log.info(f"emotion_labels : {emotion_labels}")
+log.info(f"text_labels    : {text_labels}")
 
 nltk.download("stopwords")
 nltk.download("wordnet")
 
 stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()
+log.info("NLTK stopwords and lemmatizer ready.")
 
 
 
@@ -45,24 +66,66 @@ def clean_text(text):
     return " ".join(words)
 
 # ---------------- TEXT PREDICTION ----------------
+# Per-label confidence thresholds — calibrated against the Combined_Data.csv dataset biases.
+# The dataset is mental-health-forum text so positive everyday words skew toward Depression.
+# Lower threshold for serious labels, higher for ambiguous ones.
+TEXT_THRESHOLDS = {
+    "Suicidal":             0.40,   # critical — keep even at lower confidence
+    "Depression":           0.45,   # important — forum data makes this accurate at 0.45+
+    "Anxiety":              0.50,   # keep at moderate confidence
+    "Bipolar":              0.55,   # needs clearer signal
+    "Stress":               0.55,   # easily confused with Normal
+    "Personality disorder": 0.60,   # very specific — needs higher confidence
+}
+
 def predict_text(text):
+    log.debug(f"predict_text called | input length={len(text)}")
     cleaned = clean_text(text)
+    log.debug(f"predict_text cleaned: '{cleaned[:100]}'")
     vec = vectorizer.transform([cleaned])
 
     prediction = text_model.predict(vec)[0]
-    confidence = np.max(text_model.predict_proba(vec))
+    proba       = text_model.predict_proba(vec)[0]
+    confidence  = float(np.max(proba))
+    classes     = list(text_model.classes_)
 
-    # If your model outputs 0/1
+    # Model returns label strings directly from the CSV status column
     if isinstance(prediction, (int, np.integer)):
-        label = text_labels[prediction]
+        label = text_labels[int(prediction)] if int(prediction) < len(text_labels) else str(prediction)
+        log.warning(f"predict_text: got integer prediction {prediction}, mapped to '{label}'")
     else:
-        label = prediction
+        label = str(prediction)
 
+    # If the top prediction is not Normal but confidence is too low,
+    # check if the SECOND best label also fails its threshold → default Normal
+    if label != "Normal":
+        threshold = TEXT_THRESHOLDS.get(label, 0.50)
+        if confidence < threshold:
+            # Check if the model mislabelled: look at all class probabilities
+            # and pick the highest-confidence class that meets its own threshold
+            sorted_probs = sorted(zip(classes, proba), key=lambda x: -x[1])
+            chosen = "Normal"
+            for cls, prob in sorted_probs:
+                if cls == "Normal":
+                    chosen = "Normal"
+                    break
+                cls_thr = TEXT_THRESHOLDS.get(cls, 0.50)
+                if prob >= cls_thr:
+                    chosen = cls
+                    break
+            log.info(f"predict_text: '{label}' conf={confidence:.2f} < thr={threshold} → reassigned to '{chosen}'")
+            label = chosen
+
+    log.debug(f"predict_text result: label='{label}', confidence={confidence:.4f}")
     return label, confidence
 
 # ---------------- IMAGE PREDICTION ----------------
 def predict_image(image_path):
+    log.debug(f"predict_image called | path={image_path}")
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        log.error(f"predict_image: cv2 could not read image at '{image_path}'")
+        return "Neutral", 0.0
     img = cv2.resize(img, (48, 48))
     img = img / 255.0
     img = img.reshape(1, 48, 48, 1)
@@ -72,7 +135,7 @@ def predict_image(image_path):
     confidence = np.max(pred)
 
     label = emotion_labels[label_index]
-
+    log.debug(f"predict_image result: label={label}, confidence={confidence:.4f}")
     return label, confidence
 
 face_cascade = cv2.CascadeClassifier(
@@ -241,7 +304,7 @@ def video():
 # Prediction Route
 @app.route("/predict", methods=["POST"])
 def predict():
-
+    log.info("POST /predict called")
     text_result = None
     image_result = None
     final_emotion = None
@@ -250,26 +313,33 @@ def predict():
     user_text = request.form.get("text")
 
     if user_text and user_text.strip():
+        log.info(f"/predict: text input received, length={len(user_text)}")
         text_label, text_conf = predict_text(user_text)
         text_result = (text_label, round(text_conf * 100, 2))
-        final_emotion = text_label   # store for summary
+        final_emotion = text_label
+        log.info(f"/predict: text result → label={text_label}, confidence={text_conf*100:.2f}%")
 
     # -------- IMAGE INPUT --------
     image_file = request.files.get("image")
 
     if image_file and image_file.filename != "":
+        log.info(f"/predict: image input received, filename={image_file.filename}")
         image_path = os.path.join(app.config["UPLOAD_FOLDER"], image_file.filename)
         image_file.save(image_path)
+        log.debug(f"/predict: image saved to {image_path}")
 
         img_label, img_conf = predict_image(image_path)
         image_result = (img_label, round(img_conf * 100, 2))
-        final_emotion = img_label   # store for summary
+        final_emotion = img_label
+        log.info(f"/predict: image result → label={img_label}, confidence={img_conf*100:.2f}%")
 
     # If nothing predicted
     if final_emotion is None:
+        log.warning("/predict: no text or image input — defaulting to Neutral")
         final_emotion = "Neutral"
 
     summary, recommendation = generate_ai_summary(final_emotion)
+    log.info(f"/predict: final_emotion={final_emotion} → rendering result.html")
 
     return render_template(
         "result.html",
@@ -459,35 +529,55 @@ SYSTEM_PROMPT = (
 
 def get_available_model():
     """Return the first available Ollama model, or None."""
+    log.debug(f"get_available_model: checking {OLLAMA_URL}/api/tags ...")
     try:
         resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+        log.debug(f"get_available_model: /api/tags status={resp.status_code}")
         if resp.status_code == 200:
             models = resp.json().get("models", [])
+            log.debug(f"get_available_model: models found = {[m['name'] for m in models]}")
             if models:
-                return models[0]["name"]
-    except Exception:
-        pass
+                chosen = models[0]["name"]
+                log.debug(f"get_available_model: returning '{chosen}'")
+                return chosen
+            else:
+                log.warning("get_available_model: Ollama is running but NO models are installed!")
+    except requests.exceptions.ConnectionError:
+        log.warning("get_available_model: Ollama is NOT running (connection refused)")
+    except requests.exceptions.Timeout:
+        log.warning("get_available_model: Ollama /api/tags timed out after 5s")
+    except Exception as e:
+        log.error(f"get_available_model: unexpected error — {e}")
     return None
 
 # Check Ollama status endpoint (called by frontend)
 @app.route("/check_ollama")
 def check_ollama():
+    log.info("GET /check_ollama called")
     model = get_available_model()
     if model:
+        log.info(f"/check_ollama: Ollama online, model='{model}'")
         return jsonify({"online": True, "model": model})
+    log.warning("/check_ollama: Ollama offline or no models available")
     return jsonify({"online": False, "model": None})
 
 # Chat API — real Ollama responses
 @app.route("/chat", methods=["POST"])
 def chat():
     user_message = request.json.get("message", "").strip()
+    log.info(f"POST /chat | user message: '{user_message[:100]}'")
+
     if not user_message:
-        return jsonify({"reply": "Error: empty message."})
+        log.warning("/chat: empty message received")
+        return jsonify({"reply": None, "error": "Empty message received."}), 400
 
     model = get_available_model()
     if not model:
-        return jsonify({"reply": "Error: Ollama not available."})
+        log.error("/chat: Ollama not available — cannot generate response")
+        return jsonify({"reply": None, "error": "Ollama is not running. Please start Ollama and run: ollama pull llama3.2"}), 503
 
+    log.info(f"/chat: sending prompt to Ollama model='{model}'")
+    t_start = time.time()
     try:
         resp = requests.post(
             f"{OLLAMA_URL}/api/generate",
@@ -500,14 +590,33 @@ def chat():
             },
             timeout=60
         )
-        if resp.status_code == 200:
-            reply = resp.json().get("response", "").strip()
-            if reply:
-                return jsonify({"reply": reply})
-    except Exception as e:
-        return jsonify({"reply": f"Error: {str(e)}"})
+        elapsed = time.time() - t_start
+        log.info(f"/chat: Ollama responded in {elapsed:.2f}s | HTTP status={resp.status_code}")
 
-    return jsonify({"reply": "Error: no response from model."})
+        if resp.status_code == 200:
+            data = resp.json()
+            reply = data.get("response", "").strip()
+            if reply:
+                log.info(f"/chat: reply received, length={len(reply)} chars")
+                log.debug(f"/chat: reply preview = '{reply[:120]}...'")
+                return jsonify({"reply": reply, "error": None})
+            else:
+                log.error(f"/chat: Ollama returned 200 but empty 'response' field. Full JSON: {data}")
+                return jsonify({"reply": None, "error": "Ollama returned an empty response."}), 502
+        else:
+            log.error(f"/chat: Ollama HTTP error {resp.status_code} — {resp.text[:200]}")
+            return jsonify({"reply": None, "error": f"Ollama HTTP {resp.status_code}"}), 502
+
+    except requests.exceptions.Timeout:
+        elapsed = time.time() - t_start
+        log.error(f"/chat: Ollama request timed out after {elapsed:.1f}s (limit=60s)")
+        return jsonify({"reply": None, "error": "Ollama took too long to respond (>60s). Try again."}), 504
+    except requests.exceptions.ConnectionError:
+        log.error("/chat: Lost connection to Ollama mid-request")
+        return jsonify({"reply": None, "error": "Lost connection to Ollama."}), 503
+    except Exception as e:
+        log.exception(f"/chat: Unexpected exception — {e}")
+        return jsonify({"reply": None, "error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

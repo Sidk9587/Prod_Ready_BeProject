@@ -196,22 +196,32 @@ function checkOllama(){
   fetch('/check_ollama').then(r=>r.json()).then(d=>{
     const dot=document.getElementById('sdot'),txt=document.getElementById('stext'),bar=document.getElementById('status-bar');
     if(d.online){
+      ollamaOnline = true;
       dot.className='sdot'; txt.textContent='Online · '+d.model;
       bar.className='status-bar ok';
-      bar.innerHTML='Connected to <strong>'+d.model+'</strong> — real AI active.';
+      bar.innerHTML='✓ Connected to <strong>'+d.model+'</strong> — real AI responses active.';
       setTimeout(()=>bar.className='status-bar',4000);
+      console.log('[MindCare] Ollama online, model:', d.model);
     } else {
+      ollamaOnline = false;
       dot.className='sdot off'; txt.textContent='Offline — fallback mode';
       bar.className='status-bar warn';
-      bar.innerHTML='Ollama offline. <a href="https://ollama.com/download" target="_blank">Install Ollama</a> then run <code>ollama pull llama3.2</code> and <code>ollama serve</code>';
+      bar.innerHTML='⚠ Ollama offline. <a href="https://ollama.com/download" target="_blank">Install Ollama</a> then run <code>ollama pull llama3.2</code> and <code>ollama serve</code>';
+      console.warn('[MindCare] Ollama offline — fallback responses will be used');
     }
-  }).catch(()=>{document.getElementById('sdot').className='sdot off';document.getElementById('stext').textContent='Offline';});
+  }).catch(err=>{
+    ollamaOnline = false;
+    document.getElementById('sdot').className='sdot off';
+    document.getElementById('stext').textContent='Offline';
+    console.error('[MindCare] /check_ollama failed:', err);
+  });
 }
 checkOllama();
 
-// ── Fallback responses ──
+// ── Fallback responses (used ONLY when Ollama is confirmed offline) ──
 const fallbacks=["I hear you. Your feelings are completely valid. Would you like to talk more about what is going on?","Thank you for opening up — that takes real courage. What do you think is contributing most to how you feel?","That sounds really difficult. Remember, reaching out is always the right step.","You are not alone in this. Many people go through similar experiences. Small steps still count as progress.","Have you tried any grounding techniques? Slow deep breaths can help calm the nervous system.","It is okay to not be okay. Being kind to yourself during hard times is just as important as any coping strategy.","If things feel overwhelming, speaking with a mental health professional is a sign of strength, not weakness.","I am here and listening. Take your time — there is no rush at all.","Sometimes journaling your thoughts can bring clarity. Would you like to describe your feelings in more detail?","This feeling is temporary. You have gotten through hard days before, and you can get through this one too."];
 let fbIdx=0;
+let ollamaOnline = false; // track real Ollama status
 function getFallback(){return fallbacks[fbIdx++%fallbacks.length];}
 
 // ── Add message to chat ──
@@ -309,16 +319,45 @@ function sendMessage(){
   btn.disabled = true;
   showTyping();
 
+  console.log('[MindCare] Sending to /chat:', msg);
+
   fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
-  .then(r=>r.json())
-  .then(data=>{
-    removeTyping(); btn.disabled=false;
-    const reply = (data.reply && !data.reply.toLowerCase().startsWith('error')) ? data.reply : getFallback();
-    const {siId} = addMessage(reply,'bot');
-    speakText(reply, siId);
+  .then(r=>{
+    console.log('[MindCare] /chat HTTP status:', r.status);
+    return r.json().then(data => ({ status: r.status, data }));
   })
-  .catch(()=>{
+  .then(({status, data})=>{
     removeTyping(); btn.disabled=false;
+    console.log('[MindCare] /chat response data:', data);
+
+    if(status === 200 && data.reply){
+      // ✅ Real Ollama reply
+      console.log('[MindCare] Real AI reply received, length:', data.reply.length);
+      const {siId} = addMessage(data.reply, 'bot');
+      speakText(data.reply, siId);
+    } else {
+      // ❌ Backend returned an error — show it + use fallback
+      const errMsg = data.error || 'Unknown error from server';
+      console.warn('[MindCare] Backend error:', errMsg, '| HTTP:', status);
+      // Show error info in the status bar
+      const bar = document.getElementById('status-bar');
+      bar.className = 'status-bar warn';
+      bar.innerHTML = '⚠ ' + errMsg;
+      setTimeout(()=>bar.className='status-bar', 6000);
+      // Use fallback since AI is not available
+      const fb = getFallback();
+      console.log('[MindCare] Using fallback response #' + fbIdx);
+      const {siId} = addMessage(fb, 'bot');
+      speakText(fb, siId);
+    }
+  })
+  .catch(err=>{
+    removeTyping(); btn.disabled=false;
+    console.error('[MindCare] Network error calling /chat:', err);
+    const bar = document.getElementById('status-bar');
+    bar.className = 'status-bar warn';
+    bar.innerHTML = '⚠ Network error — could not reach server.';
+    setTimeout(()=>bar.className='status-bar', 5000);
     const fb = getFallback();
     const {siId} = addMessage(fb,'bot');
     speakText(fb, siId);

@@ -1,0 +1,53 @@
+[1/5] Loading dataset from: models\Combined_Data.csv\Combined Data.csv
+      Shape: (53043, 3)
+      Columns: ['Unnamed: 0', 'statement', 'status']
+      Label distribution:
+status
+Normal                  16351
+Depression              15404
+Suicidal                10653
+Anxiety                  3888
+Bipolar                  2877
+Stress                   2669
+Personality disorder     1201
+Name: count, dtype: int64
+
+      After dropna: (52681, 3)
+
+[2/5] Cleaning text...
+      Done.
+
+[3/5] Vectorizing (TF-IDF, 10000 features)...
+      Feature matrix: (52681, 10000)
+
+[4/5] Splitting and training LogisticRegression...
+
+      Test Accuracy: 76.35%
+
+      Classification Report:
+                      precision    recall  f1-score   support
+
+             Anxiety       0.79      0.81      0.80       768
+             Bipolar       0.77      0.83      0.80       556
+          Depression       0.79      0.63      0.70      3081
+              Normal       0.88      0.91      0.90      3269
+Personality disorder       0.52      0.75      0.61       215
+              Stress       0.52      0.68      0.59       517
+            Suicidal       0.65      0.71      0.68      2131
+
+            accuracy                           0.76     10537
+           macro avg       0.70      0.76      0.73     10537
+        weighted avg       0.77      0.76      0.76     10537
+
+      Sanity predictions:
+        'I am feeling to talk with everyone and enjoy with my fa...' => Depression  [('Depression', 0.4157118110688624), ('Stress', 0.23631291548797395)]
+        'I feel happy and great today...' => Normal  [('Normal', 0.5278447191143225), ('Depression', 0.2258656510107644)]
+        'I am very sad and depressed, I feel nothing...' => Depression  [('Depression', 0.6726263291180345), ('Normal', 0.19071073713635742)]
+        'I want to kill myself...' => Suicidal  [('Suicidal', 0.857680413880195), ('Normal', 0.07957090633872325)]
+        'I cannot get out of bed, I feel hopeless...' => Depression  [('Depression', 0.5904009059346479), ('Suicidal', 0.3276509904166732)]
+        'I am stressed about my exam...' => Stress  [('Stress', 0.9449265338377528), ('Normal', 0.051037633130889146)]
+        'feeling anxious all the time...' => Anxiety  [('Anxiety', 0.8935608650184951), ('Stress', 0.05483977753769747)]
+
+[5/5] Saving models...
+      Saved: models\text_model.pkl
+      Saved: models\tfidf.pkl
